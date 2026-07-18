@@ -12,9 +12,18 @@ from homeassistant.components.climate import (
     ClimateEntityFeature,
     HVACMode,
 )
-from homeassistant.const import ATTR_TEMPERATURE, Platform, UnitOfTemperature
-from homeassistant.core import callback
+from homeassistant.const import (
+    ATTR_TEMPERATURE,
+    ATTR_UNIT_OF_MEASUREMENT,
+    STATE_UNAVAILABLE,
+    STATE_UNKNOWN,
+    Platform,
+    UnitOfTemperature,
+)
+from homeassistant.core import Event, EventStateChangedData, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.util.unit_conversion import TemperatureConverter
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -156,6 +165,28 @@ class DreoHacClimate(DreoEntity, ClimateEntity):
         for i in range(1, max_speed + 1):
             self._attr_fan_modes.append(str(i))
 
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to the external temperature sensor, if one is configured."""
+        await super().async_added_to_hass()
+
+        external_temp_entity_id = self.coordinator.external_temp_entity_id
+        if external_temp_entity_id:
+            self.async_on_remove(
+                async_track_state_change_event(
+                    self.hass,
+                    [external_temp_entity_id],
+                    self._async_external_temp_changed,
+                )
+            )
+
+    @callback
+    def _async_external_temp_changed(
+        self, _event: Event[EventStateChangedData]
+    ) -> None:
+        """Recompute current_temperature when the external sensor updates."""
+        self._update_attributes()
+        self.async_write_ha_state()
+
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
@@ -201,17 +232,54 @@ class DreoHacClimate(DreoEntity, ClimateEntity):
                 None if osc is None else (SWING_ON if osc else SWING_OFF)
             )
 
-            self._attr_current_temperature = (
-                hac_data.current_temperature
-                if hac_data.current_temperature is not None
-                else self._attr_current_temperature
-            )
+            self._attr_current_temperature = self._resolve_current_temperature(hac_data)
 
         if hac_data.target_temperature is not None:
             self._attr_target_temperature = hac_data.target_temperature
 
         if hac_data.target_humidity is not None:
             self._attr_target_humidity = hac_data.target_humidity
+
+    def _resolve_current_temperature(self, hac_data: DreoHacDeviceData) -> float | None:
+        """Resolve current_temperature, preferring the external sensor if active."""
+        device_temp = (
+            hac_data.current_temperature
+            if hac_data.current_temperature is not None
+            else self._attr_current_temperature
+        )
+
+        external_temp_entity_id = self.coordinator.external_temp_entity_id
+        if not (self.coordinator.use_external_temp_sensor and external_temp_entity_id):
+            return device_temp
+
+        state = self.hass.states.get(external_temp_entity_id)
+        if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            _LOGGER.warning(
+                "External temperature sensor %s unavailable for %s; "
+                "using device sensor instead",
+                external_temp_entity_id,
+                self._device_id,
+            )
+            return device_temp
+
+        try:
+            value = float(state.state)
+        except ValueError:
+            _LOGGER.warning(
+                "External temperature sensor %s has non-numeric state %r for %s; "
+                "using device sensor instead",
+                external_temp_entity_id,
+                state.state,
+                self._device_id,
+            )
+            return device_temp
+
+        source_unit = state.attributes.get(
+            ATTR_UNIT_OF_MEASUREMENT, self._attr_temperature_unit
+        )
+        return TemperatureConverter.convert(
+            value, source_unit, self._attr_temperature_unit
+        )
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new target hvac mode."""

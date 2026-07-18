@@ -4,6 +4,10 @@ from enum import StrEnum
 
 DOMAIN = "dreo"
 
+# Options-flow / HA-side option keys (not part of the Dreo cloud device config).
+CONF_EXTERNAL_TEMP_SENSORS = "external_temp_sensors"  # dict[device_sn, entity_id]
+CONF_EXTERNAL_TEMP_ENABLED = "external_temp_enabled"  # dict[device_sn, bool]
+
 
 class DreoEntityConfigSpec(StrEnum):
     """Dreo config keys."""

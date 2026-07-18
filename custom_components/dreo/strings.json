@@ -19,6 +19,18 @@
       }
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "External Temperature Sensors",
+        "description": "Choose an external Home Assistant temperature sensor for each AC below. Devices: {device_legend}. Leave a field empty to only use the AC's built-in sensor. Selecting a sensor here does not activate it immediately — use the \"Use External Temperature Sensor\" switch on the AC's dashboard card to switch the active source live."
+      }
+    },
+    "abort": {
+      "no_hac_devices": "No Dreo air conditioner (HAC) devices were found on this account.",
+      "entry_not_loaded": "The Dreo integration must finish loading before options can be changed. Reload the integration and try again."
+    }
+  },
   "exceptions": {
     "humidity_not_supported_in_mode": {
       "message": "Humidity control is not supported in the current mode"

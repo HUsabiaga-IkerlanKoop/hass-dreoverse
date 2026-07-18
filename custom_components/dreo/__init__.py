@@ -12,7 +12,12 @@ from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from pydreo.client import DreoClient
 from pydreo.exceptions import DreoBusinessException, DreoException
 
-from .const import DreoEntityConfigSpec
+from .const import (
+    CONF_EXTERNAL_TEMP_ENABLED,
+    CONF_EXTERNAL_TEMP_SENSORS,
+    DreoDeviceType,
+    DreoEntityConfigSpec,
+)
 from .coordinator import DreoDataUpdateCoordinator
 
 if TYPE_CHECKING:
@@ -74,7 +79,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: DreoConfigEntry) 
     coordinators: dict[str, DreoDataUpdateCoordinator] = {}
 
     for device in devices:
-        await async_setup_device_coordinator(hass, client, device, coordinators)
+        await async_setup_device_coordinator(
+            hass, client, device, coordinators, config_entry
+        )
 
     config_entry.runtime_data = DreoData(client, devices, coordinators)
 
@@ -88,7 +95,30 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: DreoConfigEntry) 
             )
             coordinator.async_update_listeners()
 
+    config_entry.async_on_unload(
+        config_entry.add_update_listener(_async_options_updated)
+    )
+
     return True
+
+
+async def _async_options_updated(
+    hass: HomeAssistant, config_entry: DreoConfigEntry
+) -> None:
+    """
+    Reload the entry only if the external sensor mapping itself changed.
+
+    Toggling the "use external sensor" switch only ever writes
+    CONF_EXTERNAL_TEMP_ENABLED, so this is a no-op for that path and a full
+    reload is only paid when devices actually gain/lose an external sensor.
+    """
+    new_sensors = config_entry.options.get(CONF_EXTERNAL_TEMP_SENSORS, {})
+    mapping_changed = any(
+        coordinator.external_temp_entity_id != new_sensors.get(device_id)
+        for device_id, coordinator in config_entry.runtime_data.coordinators.items()
+    )
+    if mapping_changed:
+        await hass.config_entries.async_reload(config_entry.entry_id)
 
 
 async def async_setup_device_coordinator(
@@ -96,6 +126,7 @@ async def async_setup_device_coordinator(
     client: DreoClient,
     device: dict[str, Any],
     coordinators: dict[str, DreoDataUpdateCoordinator],
+    config_entry: DreoConfigEntry,
 ) -> None:
     """Set up coordinator for a single device."""
     device_model = device.get("model")
@@ -114,8 +145,23 @@ async def async_setup_device_coordinator(
     if device_id in coordinators:
         return
 
+    external_temp_entity_id = None
+    use_external_temp_sensor = False
+    if device_type == DreoDeviceType.HAC:
+        external_temp_sensors = config_entry.options.get(CONF_EXTERNAL_TEMP_SENSORS, {})
+        external_temp_enabled = config_entry.options.get(CONF_EXTERNAL_TEMP_ENABLED, {})
+        external_temp_entity_id = external_temp_sensors.get(device_id)
+        use_external_temp_sensor = bool(external_temp_enabled.get(device_id, False))
+
     coordinator = DreoDataUpdateCoordinator(
-        hass, client, device_id, device_type, model_config
+        hass,
+        client,
+        device_id,
+        device_type,
+        model_config,
+        config_entry,
+        external_temp_entity_id=external_temp_entity_id,
+        use_external_temp_sensor=use_external_temp_sensor,
     )
 
     if coordinator.data_processor is None:

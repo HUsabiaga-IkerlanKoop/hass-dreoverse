@@ -14,7 +14,12 @@ if TYPE_CHECKING:
 
     from . import DreoConfigEntry
     from .coordinator import DreoDataUpdateCoordinator
-from .const import DreoEntityConfigSpec, DreoErrorCode
+from .const import (
+    CONF_EXTERNAL_TEMP_ENABLED,
+    DreoDeviceType,
+    DreoEntityConfigSpec,
+    DreoErrorCode,
+)
 from .entity import DreoEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,7 +34,16 @@ async def async_setup_entry(
 
     @callback
     def async_add_switch_entities() -> None:
-        entities: list[DreoToggleSwitch] = []
+        entities: list[DreoToggleSwitch | DreoExternalTempSourceSwitch] = []
+
+        for device in config_entry.runtime_data.devices:
+            if device.get("deviceType") != DreoDeviceType.HAC:
+                continue
+            device_id = device.get("deviceSn")
+            coordinator = config_entry.runtime_data.coordinators.get(device_id)
+            if not coordinator or not coordinator.external_temp_entity_id:
+                continue
+            entities.append(DreoExternalTempSourceSwitch(device, coordinator))
 
         for device in config_entry.runtime_data.devices:
             device_id = device.get("deviceSn")
@@ -193,3 +207,54 @@ class DreoToggleSwitch(DreoEntity, SwitchEntity):
         if self._field == "fanOnTempMet_switch":
             return "mdi:weather-windy" if is_on else "mdi:air-filter"
         return None
+
+
+class DreoExternalTempSourceSwitch(DreoEntity, SwitchEntity):
+    """Toggle between an AC's built-in sensor and a configured external HA sensor."""
+
+    def __init__(
+        self,
+        device: dict[str, Any],
+        coordinator: DreoDataUpdateCoordinator,
+    ) -> None:
+        """Initialize the external temperature source switch."""
+        super().__init__(
+            device,
+            coordinator,
+            "use_external_temp_sensor",
+            "Use External Temperature Sensor",
+        )
+        self._attr_is_on = coordinator.use_external_temp_sensor
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Sync state from the coordinator's live toggle flag."""
+        self._attr_is_on = self.coordinator.use_external_temp_sensor
+        super()._handle_coordinator_update()
+
+    async def async_turn_on(self, **_: Any) -> None:
+        """Switch to using the external temperature sensor."""
+        await self._async_set_state(enabled=True)
+
+    async def async_turn_off(self, **_: Any) -> None:
+        """Switch back to using the device's own temperature sensor."""
+        await self._async_set_state(enabled=False)
+
+    async def _async_set_state(self, *, enabled: bool) -> None:
+        """Flip the coordinator's runtime flag and persist it to options."""
+        self.coordinator.use_external_temp_sensor = enabled
+        self._attr_is_on = enabled
+        self.async_write_ha_state()
+        self.coordinator.async_update_listeners()
+
+        entry = self.coordinator.dreo_config_entry
+        options = dict(entry.options)
+        enabled_map = dict(options.get(CONF_EXTERNAL_TEMP_ENABLED, {}))
+        enabled_map[self._device_id] = enabled
+        options[CONF_EXTERNAL_TEMP_ENABLED] = enabled_map
+        self.hass.config_entries.async_update_entry(entry, options=options)
+
+    @property
+    def icon(self) -> str:
+        """Return an icon reflecting the active temperature source."""
+        return "mdi:home-thermometer" if self._attr_is_on else "mdi:thermometer"

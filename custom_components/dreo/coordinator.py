@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 
     from homeassistant.core import HomeAssistant
     from pydreo.client import DreoClient
+
+    from . import DreoConfigEntry
 from .const import (
     DOMAIN,
     DreoDeviceType,
@@ -1048,13 +1050,17 @@ DreoDeviceData = (
 class DreoDataUpdateCoordinator(DataUpdateCoordinator[DreoDeviceData | None]):
     """Class to manage fetching Dreo data."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         hass: HomeAssistant,
         client: DreoClient,
         device_id: str,
         device_type: str,
         model_config: dict[str, Any],
+        config_entry: DreoConfigEntry,
+        *,
+        external_temp_entity_id: str | None = None,
+        use_external_temp_sensor: bool = False,
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
@@ -1067,6 +1073,13 @@ class DreoDataUpdateCoordinator(DataUpdateCoordinator[DreoDeviceData | None]):
         self.device_id = device_id
         self.device_type = device_type
         self.model_config = model_config
+        self._config_entry = config_entry
+        # AC (HAC) only: optional external HA sensor used instead of the
+        # device's own temperature sensor. `external_temp_entity_id` is fixed
+        # for this coordinator's lifetime (changing it requires a config
+        # entry reload); `use_external_temp_sensor` is a live runtime toggle.
+        self.external_temp_entity_id = external_temp_entity_id
+        self.use_external_temp_sensor = use_external_temp_sensor
         self.data_processor: (
             Callable[[dict[str, Any], dict[str, Any]], DreoDeviceData] | None
         )
@@ -1102,6 +1115,16 @@ class DreoDataUpdateCoordinator(DataUpdateCoordinator[DreoDeviceData | None]):
                 self.device_id,
             )
             self.data_processor = None
+
+    @property
+    def dreo_config_entry(self) -> DreoConfigEntry:
+        """
+        Return the config entry this coordinator was created from.
+
+        Named distinctly (not `config_entry`) because `DataUpdateCoordinator`
+        already assigns a plain `self.config_entry` attribute of its own.
+        """
+        return self._config_entry
 
     async def _async_update_data(self) -> DreoDeviceData | None:
         """Get device status from Dreo API and process it."""
