@@ -1,5 +1,5 @@
 {
     "homeassistant": "2024.8.0",
-    "name": "Official Dreo Devices for Home Assistant",
+    "name": "Dreo (Community Fork by husabiaga-ikerlanKoop)",
     "render_readme": true
 }

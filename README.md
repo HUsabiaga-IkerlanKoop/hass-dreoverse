@@ -1,6 +1,8 @@
-# Official Dreo Smart Device Integration for Home Assistant
+# Dreo Smart Device Integration for Home Assistant (Community Fork)
 
-This is the official integration component developed and maintained by the Dreo engineering team for Home Assistant. It enables direct control and monitoring of Dreo smart devices including fans, air conditioners, ceiling fans, and humidifiers through your Home Assistant installation.
+> **This is an unofficial community fork** of the official [dreo-team/hass-dreoverse](https://github.com/dreo-team/hass-dreoverse) integration, maintained by [@husabiaga-ikerlanKoop](https://github.com/husabiaga-ikerlanKoop). It is not affiliated with or supported by Dreo. For the official, Dreo-maintained integration, see the upstream repository linked above.
+
+This fork enables direct control and monitoring of Dreo smart devices including fans, air conditioners, ceiling fans, and humidifiers through your Home Assistant installation, and adds features on top of the upstream project (see [CHANGELOG.md](CHANGELOG.md)).
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
@@ -148,7 +150,7 @@ You can install this integration by adding this repository as a custom repositor
 
 1. Click the button below to download the integration from HACS:
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=dreo-team&repository=hass-dreoverse&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=husabiaga-ikerlanKoop&repository=hass-dreoverse&category=integration)
 
 2. Restart your Home Assistant instance.
 
@@ -257,7 +259,7 @@ These diagnostics files are specifically designed to help troubleshoot the Dreo 
 
 ## Adding New Products
 
-Don't see your model listed above? Create an [issue](https://github.com/dreo-team/hass-dreoverse/issues) and I'll add it.
+Don't see your model listed above? Create an [issue](https://github.com/husabiaga-ikerlanKoop/hass-dreoverse/issues) and I'll add it.
 
 **Please make sure to include:**
 
@@ -313,7 +315,7 @@ If your device is not yet supported:
    - Diagnostic information using [Option 2](#option-2-download-dreo-specific-diagnostics) above
    - Screenshots of the device in your Dreo mobile app (if possible)
 
-2. [Create an issue](https://github.com/dreo-team/hass-dreoverse/issues/new) on GitHub with all the collected information
+2. [Create an issue](https://github.com/husabiaga-ikerlanKoop/hass-dreoverse/issues/new) on GitHub with all the collected information
 
 > **Note:** Our team is actively expanding device support. When reporting unsupported devices, please provide as much detail as possible to help us prioritize and implement support for your model in future updates.
 
