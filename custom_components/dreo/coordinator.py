@@ -1153,6 +1153,13 @@ class DreoDataUpdateCoordinator(DataUpdateCoordinator[DreoDeviceData | None]):
             if state is None:
                 _raise_no_status()
 
+            _LOGGER.debug(
+                "Raw status for device %s (%s): %s",
+                self.device_id,
+                self.device_type,
+                state,
+            )
+
             if self.data_processor is None:
                 _raise_no_processor()
 
