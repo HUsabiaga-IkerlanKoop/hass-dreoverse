@@ -41,9 +41,11 @@ class DreoFlowHandler(ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry: ConfigEntry) -> DreoOptionsFlowHandler:
+    def async_get_options_flow(
+        _config_entry: ConfigEntry,
+    ) -> DreoOptionsFlowHandler:
         """Get the options flow for this handler."""
-        return DreoOptionsFlowHandler(config_entry)
+        return DreoOptionsFlowHandler()
 
     @staticmethod
     def _hash_password(password: str) -> str:
