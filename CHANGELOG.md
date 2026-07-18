@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Features
 - Add support for using an external Home Assistant temperature sensor as the current-temperature source for AC (HAC) devices, with a per-device options-flow sensor picker and a live dashboard switch to toggle between the AC's built-in sensor and the external sensor
+- When the external sensor is active, the AC's power is now actively cycled based on it via a PID-with-hysteresis relay controller (the device exposes no internal current-temperature reading to correct against), with a minimum on/off cycle time to protect the compressor
 
 ## [2.2.1] - 2026-02-24
 
